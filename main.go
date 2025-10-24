@@ -103,21 +103,19 @@ func main() {
 		fmt.Println("密码过长!")
 		return
 	}
+
 	fmt.Println()
-	// 用户确认
 	if len(enList) > 0 {
-		if len(confirmPassword) == 0 {
-			fmt.Print("请确认密码：")
-			confirmPassword, err = term.ReadPassword(int(os.Stdin.Fd()))
-			if err != nil {
-				fmt.Println("\n确认密码错误", err)
-				return
-			}
-			fmt.Println()
-			if !bytes.Equal(password, confirmPassword) {
-				fmt.Println("确认密码错误!")
-				return
-			}
+		fmt.Print("请确认密码：")
+		confirmPassword, err = term.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			fmt.Println("\n确认密码错误", err)
+			return
+		}
+		fmt.Println()
+		if !bytes.Equal(password, confirmPassword) {
+			fmt.Println("确认密码错误!")
+			return
 		}
 		fmt.Printf("\n加密列表(%d):\n", len(enList))
 		for _, v := range enList {
@@ -139,11 +137,10 @@ func main() {
 		return
 	}
 
+	var start time.Time
 	if len(enList) > 0 {
 		fmt.Println()
 	}
-
-	var start time.Time
 	for _, v := range enList {
 		fmt.Printf("加密：%s ", v)
 		start = time.Now()
