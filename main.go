@@ -88,32 +88,33 @@ func main() {
 		return
 	}
 
-	var confirmPasswordByte []byte
+	var confirmPassword []byte
 	fmt.Print("请输入密码：")
-	passwordByte, err := term.ReadPassword(int(os.Stdin.Fd()))
+	password, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		fmt.Println("\n密码错误", err)
 		return
 	}
-	fmt.Println()
-	if len(passwordByte) == 0 {
+	if len(password) == 0 {
 		fmt.Println("密码不能为空!")
 		return
 	}
-
-	password := string(passwordByte)
-
+	if len(password) >= 32 {
+		fmt.Println("密码过长!")
+		return
+	}
+	fmt.Println()
 	// 用户确认
 	if len(enList) > 0 {
-		if len(confirmPasswordByte) == 0 {
+		if len(confirmPassword) == 0 {
 			fmt.Print("请确认密码：")
-			confirmPasswordByte, err = term.ReadPassword(int(os.Stdin.Fd()))
+			confirmPassword, err = term.ReadPassword(int(os.Stdin.Fd()))
 			if err != nil {
 				fmt.Println("\n确认密码错误", err)
 				return
 			}
 			fmt.Println()
-			if !bytes.Equal(passwordByte, confirmPasswordByte) {
+			if !bytes.Equal(password, confirmPassword) {
 				fmt.Println("确认密码错误!")
 				return
 			}
@@ -182,8 +183,7 @@ func getAllFilePath(dir string) (paths []string) {
 	return
 }
 
-func enFile(psd, srcFilePath string) error {
-	key := []byte(psd)
+func enFile(key []byte, srcFilePath string) error {
 	bcryptKey, err := bcrypt.GenerateFromPassword(key, 0)
 	if err != nil {
 		return err
@@ -270,9 +270,7 @@ func getGeFilePrefixName(p string) string {
 	return filepath.Join(filepath.Dir(p), name)
 }
 
-func deFile(psd, geFilePath string) error {
-	key := []byte(psd)
-
+func deFile(key []byte, geFilePath string) error {
 	geFile, err := os.Open(geFilePath)
 	if err != nil {
 		return err
