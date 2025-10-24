@@ -83,7 +83,9 @@ func main() {
 		}
 	}
 
-	if len(enList) == 0 && len(deList) == 0 {
+	var enLen = len(enList)
+	var deLen = len(deList)
+	if enLen == 0 && deLen == 0 {
 		fmt.Println("无操作文件!")
 		return
 	}
@@ -105,7 +107,7 @@ func main() {
 	}
 
 	fmt.Println()
-	if len(enList) > 0 {
+	if enLen > 0 {
 		fmt.Print("请确认密码：")
 		confirmPassword, err = term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
@@ -117,16 +119,16 @@ func main() {
 			fmt.Println("确认密码错误!")
 			return
 		}
-		fmt.Printf("\n加密列表(%d):\n", len(enList))
-		for _, v := range enList {
-			fmt.Println(v)
+		fmt.Printf("\n加密列表(%d):\n", enLen)
+		for i, v := range enList {
+			fmt.Println(i+1, v)
 		}
 	}
 
-	if len(deList) > 0 {
-		fmt.Printf("\n解密列表(%d):\n", len(deList))
-		for _, v := range deList {
-			fmt.Println(v)
+	if deLen > 0 {
+		fmt.Printf("\n解密列表(%d):\n", deLen)
+		for i, v := range deList {
+			fmt.Println(i+1, v)
 		}
 	}
 
@@ -138,11 +140,11 @@ func main() {
 	}
 
 	var start time.Time
-	if len(enList) > 0 {
+	if enLen > 0 {
 		fmt.Println()
 	}
-	for _, v := range enList {
-		fmt.Printf("加密：%s ", v)
+	for i, v := range enList {
+		fmt.Printf("加密(%d/%d)：%s ", i+1, enLen, v)
 		start = time.Now()
 		err = enFile(password, v)
 		if err != nil {
@@ -152,11 +154,11 @@ func main() {
 		}
 	}
 
-	if len(deList) > 0 {
+	if deLen > 0 {
 		fmt.Println()
 	}
-	for _, v := range deList {
-		fmt.Printf("解密：%s ", v)
+	for i, v := range deList {
+		fmt.Printf("解密(%d/%d)：%s ", i+1, deLen, v)
 		start = time.Now()
 		err = deFile(password, v)
 		if err != nil {
