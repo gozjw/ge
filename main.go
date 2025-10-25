@@ -338,7 +338,7 @@ func deFile(key []byte, geFilePath string) error {
 	if err != nil {
 		return err
 	}
-	defer geFile.Close()
+	defer srcFile.Close()
 
 	data := make([]byte, bufSize)
 	for {
