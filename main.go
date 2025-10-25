@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -55,27 +57,40 @@ func runNoArg() {
 
 		enList, deList = getFileAbsPath(allFileList)
 
-		fmt.Print("文件加解密\n1.加密\n2.解密\nq.退出\n请选择：")
+		fmt.Print("文件加解密\n1.加密\n2.解密\n3.清屏\nq.退出\n请选择：")
 		fmt.Scanln(&op)
 		fmt.Println()
 		switch op {
 		case "1":
 			enList = selectFile(enList, "加密")
-			deList = make([]GeFile, 0)
+			enAndDeFile(enList, []GeFile{})
 		case "2":
 			deList = selectFile(deList, "解密")
-			enList = make([]GeFile, 0)
+			enAndDeFile([]GeFile{}, deList)
+		case "3":
+			clearScreen()
+			goto flesh
 		case "q":
 			return
-		default:
-			goto flesh
 		}
 
-		enAndDeFile(enList, deList)
 		fmt.Println()
-
 	flesh:
 	}
+}
+
+func clearScreen() {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("clear")
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "cls")
+	default:
+		return
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Run()
 }
 
 func selectFile(src []GeFile, desc string) (target []GeFile) {
