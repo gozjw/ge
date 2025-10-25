@@ -55,7 +55,7 @@ func runNoArg() {
 
 		enList, deList = getFileAbsPath(allFileList)
 
-		fmt.Print("文件加解密\n1.加密\n2.解密\n3.退出\n请选择：")
+		fmt.Print("文件加解密\n1.加密\n2.解密\nq.退出\n请选择：")
 		fmt.Scanln(&op)
 		fmt.Println()
 		switch op {
@@ -65,12 +65,16 @@ func runNoArg() {
 		case "2":
 			deList = selectFile(deList, "解密")
 			enList = make([]GeFile, 0)
-		default:
+		case "q":
 			return
+		default:
+			goto flesh
 		}
 
 		enAndDeFile(enList, deList)
 		fmt.Println()
+
+	flesh:
 	}
 }
 
