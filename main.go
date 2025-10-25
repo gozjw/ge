@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,29 +24,129 @@ import (
 var geFilePrefix = "ge_"
 var geFileSuffix = ".ge"
 
+var programPath string
+
 func main() {
-	if len(os.Args) <= 1 {
-		fmt.Println("参数错误!")
+	programPath = os.Args[0]
+	if len(os.Args) > 1 {
+		runWithArg()
+		return
+	}
+	runNoArg()
+}
+
+func runNoArg() {
+	var allFileList []string
+	var enList, deList []GeFile
+	var op string
+	for {
+		op = ""
+		allFileList = make([]string, 0)
+		for _, fp := range getDirFile(".") {
+			absPath, err := filepath.Abs(fp)
+			if err != nil {
+				continue
+			}
+			if absPath == programPath {
+				continue
+			}
+			allFileList = append(allFileList, absPath)
+		}
+
+		enList, deList = getFileAbsPath(allFileList)
+
+		fmt.Print("文件加解密\n1.加密\n2.解密\n3.退出\n请选择：")
+		fmt.Scanln(&op)
+		fmt.Println()
+		switch op {
+		case "1":
+			enList = selectFile(enList, "加密")
+			deList = make([]GeFile, 0)
+		case "2":
+			deList = selectFile(deList, "解密")
+			enList = make([]GeFile, 0)
+		default:
+			return
+		}
+
+		enAndDeFile(enList, deList)
+		fmt.Println()
+	}
+}
+
+func selectFile(src []GeFile, desc string) (target []GeFile) {
+	if len(src) == 0 {
 		return
 	}
 
-	programPath := os.Args[0]
+	var opSign = "（已" + desc + "）"
+	fmt.Printf("%s列表：\n", desc)
+	for i, v := range src {
+		if v.OpSign {
+			fmt.Println(i+1, v.Path, opSign)
+		} else {
+			fmt.Println(i+1, v.Path)
+		}
+	}
+	fmt.Println(len(src)+1, "全部")
 
-	filePathList := make([]string, 0)
+	fmt.Printf("\n选择需要%s文件的序号，多个文件以/分隔，如1/2/3\n请选择：", desc)
+	var indexMap = make(map[int]struct{})
+	var input string
+	fmt.Scanln(&input)
+	for _, v := range strings.Split(input, "/") {
+		v = strings.TrimSpace(v)
+		index, err := strconv.Atoi(v)
+		if err != nil {
+			continue
+		}
+		index--
+		if index == len(src) {
+			return src
+		}
+		if index < 0 || index >= len(src) {
+			continue
+		}
+		if _, ok := indexMap[index]; ok {
+			continue
+		}
+		target = append(target, src[index])
+		indexMap[index] = struct{}{}
+	}
+	if len(target) == 0 {
+		fmt.Println()
+	}
+	return
+}
+
+func runWithArg() {
+	allFileList := make([]string, 0)
 	for _, arg := range os.Args[1:] {
 		fileInfo, err := os.Stat(arg)
 		if err != nil {
 			continue
 		}
 		if fileInfo.IsDir() {
-			filePathList = append(filePathList, getAllFilePath(arg)...)
+			allFileList = append(allFileList, getDirFile(arg)...)
 		} else {
-			filePathList = append(filePathList, arg)
+			allFileList = append(allFileList, arg)
 		}
 	}
 
-	allFilePathMap := make(map[string]struct{})
-	for _, fp := range filePathList {
+	enList, deList := getFileAbsPath(allFileList)
+
+	enAndDeFile(enList, deList)
+}
+
+type GeFile struct {
+	Path   string
+	OpSign bool
+}
+
+func getFileAbsPath(allFileList []string) (enList []GeFile, deList []GeFile) {
+	allFileMap := make(map[string]struct{})
+	list := make([]string, 0)
+	for _, fp := range allFileList {
 		absPath, err := filepath.Abs(fp)
 		if err != nil {
 			continue
@@ -53,36 +154,38 @@ func main() {
 		if absPath == programPath {
 			continue
 		}
-		allFilePathMap[absPath] = struct{}{}
+		if _, ok := allFileMap[absPath]; ok {
+			continue
+		}
+		list = append(list, absPath)
+		allFileMap[absPath] = struct{}{}
 	}
 
-	var isEn bool
-	var enList, deList []string
-	for absPath := range allFilePathMap {
-		isEn = true
+	for _, fileAbs := range list {
+		fileName := filepath.Base(fileAbs)
 
-		fileName := filepath.Base(absPath)
 		if strings.HasPrefix(fileName, geFilePrefix) {
 			continue
 		}
 
 		if strings.HasSuffix(fileName, geFileSuffix) {
-			isEn = false
-		}
-
-		if isEn {
-			if _, ok := allFilePathMap[absPath+geFileSuffix]; ok {
+			_, ok := allFileMap[getGeFilePrefixName(fileAbs)]
+			if ok && len(os.Args) > 1 {
 				continue
 			}
-			enList = append(enList, absPath)
+			deList = append(deList, GeFile{Path: fileAbs, OpSign: ok})
 		} else {
-			if _, ok := allFilePathMap[getGeFilePrefixName(absPath)]; ok {
+			_, ok := allFileMap[fileAbs+geFileSuffix]
+			if ok && len(os.Args) > 1 {
 				continue
 			}
-			deList = append(deList, absPath)
+			enList = append(enList, GeFile{Path: fileAbs, OpSign: ok})
 		}
 	}
+	return
+}
 
+func enAndDeFile(enList []GeFile, deList []GeFile) {
 	var enLen = len(enList)
 	var deLen = len(deList)
 	if enLen == 0 && deLen == 0 {
@@ -90,50 +193,50 @@ func main() {
 		return
 	}
 
-	var confirmPassword []byte
-	fmt.Print("请输入密码：")
+	fmt.Print("\n请设置密码：")
 	password, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		fmt.Println("\n密码错误", err)
 		return
 	}
 	if len(password) == 0 {
-		fmt.Println("密码不能为空!")
+		fmt.Println("\n密码不能为空!")
 		return
 	}
 	if len(password) >= 32 {
-		fmt.Println("密码过长!")
+		fmt.Println("\n密码过长!")
 		return
 	}
 
 	fmt.Println()
 	if enLen > 0 {
 		fmt.Print("请确认密码：")
-		confirmPassword, err = term.ReadPassword(int(os.Stdin.Fd()))
+		confirmPassword, err := term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
-			fmt.Println("\n确认密码错误", err)
+			fmt.Println("\n输入确认密码错误", err)
 			return
 		}
-		fmt.Println()
 		if !bytes.Equal(password, confirmPassword) {
-			fmt.Println("确认密码错误!")
+			fmt.Println("\n确认密码错误!")
 			return
 		}
+
+		fmt.Println()
 		fmt.Printf("\n加密列表(%d):\n", enLen)
 		for i, v := range enList {
-			fmt.Println(i+1, v)
+			fmt.Println(i+1, v.Path)
 		}
 	}
 
 	if deLen > 0 {
 		fmt.Printf("\n解密列表(%d):\n", deLen)
 		for i, v := range deList {
-			fmt.Println(i+1, v)
+			fmt.Println(i+1, v.Path)
 		}
 	}
 
 	var confirm string
-	fmt.Print("\n确认操作(y/n):")
+	fmt.Print("\n确认操作(y-确认/n-取消):")
 	fmt.Scanln(&confirm)
 	if confirm != "y" {
 		return
@@ -144,9 +247,9 @@ func main() {
 		fmt.Println()
 	}
 	for i, v := range enList {
-		fmt.Printf("加密(%d/%d)：%s ", i+1, enLen, v)
+		fmt.Printf("加密(%d/%d)：%s ", i+1, enLen, v.Path)
 		start = time.Now()
-		err = enFile(password, v)
+		err := enFile(password, v.Path)
 		if err != nil {
 			fmt.Printf(" 错误:%s\n", err.Error())
 		} else {
@@ -158,9 +261,9 @@ func main() {
 		fmt.Println()
 	}
 	for i, v := range deList {
-		fmt.Printf("解密(%d/%d)：%s ", i+1, deLen, v)
+		fmt.Printf("解密(%d/%d)：%s ", i+1, deLen, v.Path)
 		start = time.Now()
-		err = deFile(password, v)
+		err := deFile(password, v.Path)
 		if err != nil {
 			fmt.Printf(" 错误:%s\n", err.Error())
 		} else {
@@ -169,7 +272,7 @@ func main() {
 	}
 }
 
-func getAllFilePath(dir string) (paths []string) {
+func getDirFile(dir string) (paths []string) {
 	paths = make([]string, 0)
 	filepath.Walk(dir,
 		func(path string, info os.FileInfo, err error) error {
@@ -207,7 +310,8 @@ func enFile(key []byte, srcFilePath string) error {
 	}
 	defer srcFile.Close()
 
-	geFile, err := os.OpenFile(srcFilePath+geFileSuffix, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	geFile, err := os.OpenFile(srcFilePath+geFileSuffix,
+		os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
@@ -334,7 +438,8 @@ func deFile(key []byte, geFilePath string) error {
 	}
 	mode := cipher.NewCBCDecrypter(block, iv)
 
-	srcFile, err := os.OpenFile(getGeFilePrefixName(geFilePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	srcFile, err := os.OpenFile(getGeFilePrefixName(geFilePath),
+		os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
