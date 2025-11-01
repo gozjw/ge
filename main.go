@@ -73,7 +73,7 @@ func runNoArg() {
 
 func selectRnFile(rnList [][2]string) (target [][2]string) {
 	if len(rnList) == 0 {
-		fmt.Println("\n无需要还原名称的文件！")
+		fmt.Println("\n无选择文件！")
 		return
 	}
 
@@ -255,18 +255,18 @@ func enAndDeFile(enList []GeFile, deList []GeFile) {
 	var enLen = len(enList)
 	var deLen = len(deList)
 	if enLen == 0 && deLen == 0 {
-		fmt.Println("\n未选择文件!")
+		fmt.Println("\n未选择文件！")
 		return
 	}
 
 	fmt.Print("\n请设置密码：")
 	password, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
-		fmt.Println("\n密码错误", err)
+		fmt.Println("\n设置密码错误", err)
 		return
 	}
 	if len(password) == 0 {
-		fmt.Println("\n密码不能为空!")
+		fmt.Println("\n密码不能为空！")
 		return
 	}
 
@@ -275,30 +275,30 @@ func enAndDeFile(enList []GeFile, deList []GeFile) {
 		fmt.Print("请确认密码：")
 		confirmPassword, err := term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
-			fmt.Println("\n输入确认密码错误", err)
+			fmt.Println("\n输入确认密码错误！", err)
 			return
 		}
 		if !bytes.Equal(password, confirmPassword) {
-			fmt.Println("\n确认密码错误!")
+			fmt.Println("\n确认密码与设置密码不一致！")
 			return
 		}
 
 		fmt.Println()
-		fmt.Printf("\n加密列表(%d):\n", enLen)
+		fmt.Printf("\n加密列表(%d)：\n", enLen)
 		for i, v := range enList {
 			fmt.Println(i+1, v.Path)
 		}
 	}
 
 	if deLen > 0 {
-		fmt.Printf("\n解密列表(%d):\n", deLen)
+		fmt.Printf("\n解密列表(%d)：\n", deLen)
 		for i, v := range deList {
 			fmt.Println(i+1, v.Path)
 		}
 	}
 
 	var confirm string
-	fmt.Print("\n确认操作(y-确认/n-取消):")
+	fmt.Print("\n确认操作(y-确认/n-取消)：")
 	fmt.Scanln(&confirm)
 	if confirm != "y" {
 		return
@@ -313,9 +313,9 @@ func enAndDeFile(enList []GeFile, deList []GeFile) {
 		start = time.Now()
 		err := enFile(password, v.Path)
 		if err != nil {
-			fmt.Printf(" 错误:%s\n", err.Error())
+			fmt.Printf(" 错误：%s\n", err.Error())
 		} else {
-			fmt.Printf(" 用时:%fs\n", time.Since(start).Seconds())
+			fmt.Printf(" 用时：%fs\n", time.Since(start).Seconds())
 		}
 	}
 
@@ -327,9 +327,9 @@ func enAndDeFile(enList []GeFile, deList []GeFile) {
 		start = time.Now()
 		err := deFile(password, v.Path)
 		if err != nil {
-			fmt.Printf(" 错误:%s\n", err.Error())
+			fmt.Printf(" 错误：%s\n", err.Error())
 		} else {
-			fmt.Printf(" 用时:%fs\n", time.Since(start).Seconds())
+			fmt.Printf(" 用时：%fs\n", time.Since(start).Seconds())
 		}
 	}
 }
@@ -478,7 +478,7 @@ func deFile(password []byte, srcPath string) error {
 
 		pt, err := aead.Open(nil, nonce, ct, nil)
 		if err != nil {
-			return errors.New("密码错误")
+			return errors.New("密码错误！")
 		}
 		if _, err := dst.Write(pt); err != nil {
 			return err
